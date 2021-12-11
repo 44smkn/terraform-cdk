@@ -1,14 +1,37 @@
 import { Construct } from "constructs";
-import { App, TerraformStack } from "cdktf";
+import { App, TerraformStack, TerraformOutput } from "cdktf";
+import { AwsProvider } from "./.gen/providers/aws";
+import { provisionVpcModule } from "./network"
+import { enableIamRoleForServiceAccount } from "./irsa"
+import { provisionManagedNodeGroup } from "./nodegroup"
+import { provisionEksCluster } from "./cluster"
 
-class MyStack extends TerraformStack {
-  constructor(scope: Construct, name: string) {
+interface EKSClusterStackConfig {
+  region?: string;
+  clusterName: string;
+}
+export class EKSClusterStack extends TerraformStack {
+  constructor(scope: Construct, name: string, config: EKSClusterStackConfig) {
     super(scope, name);
 
-    // define resources here
+    const { region = "ap-northeast-1" } = config;
+    new AwsProvider(this, "aws", {
+      region: region,
+    });
+
+    const vpc = provisionVpcModule(this, region);
+    const cluster = provisionEksCluster(this, config.clusterName, vpc.privateSubnets);
+    enableIamRoleForServiceAccount(this, cluster);
+    provisionManagedNodeGroup(this, cluster);
+
+    new TerraformOutput(this, "eks_cluster_endpoint", {
+      value: cluster.endpoint
+    })
   }
 }
 
-const app = new App();
-new MyStack(app, "terraform-cdk");
+const app = new App({
+  stackTraces: true
+});
+new EKSClusterStack(app, "44smkn-test-cluster-stack", { clusterName: "44smkn-test-cluster" });
 app.synth();
