@@ -33,5 +33,5 @@ export class EKSClusterStack extends TerraformStack {
 const app = new App({
   stackTraces: true
 });
-new EKSClusterStack(app, "44smkn-test-cluster-stack", { clusterName: "44smkn-test-cluster" });
+new EKSClusterStack(app, "simple-eks-cluster-stack", { clusterName: "simple-eks-cluster" });
 app.synth();
